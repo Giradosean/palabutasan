@@ -1,0 +1,232 @@
+import React, { useState, useEffect } from 'react';
+import { PageRoute, Piercing } from './types';
+import { PIERCINGS } from './data/piercings';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { PiercingDetailModal } from './components/PiercingDetailModal';
+
+// Pages
+import { HomePage } from './pages/HomePage';
+import { AboutPage } from './pages/AboutPage';
+import { PiercingsPage } from './pages/PiercingsPage';
+import { InstructionsPage } from './pages/InstructionsPage';
+import { AftercarePage } from './pages/AftercarePage';
+import { AvailabilityPage } from './pages/AvailabilityPage';
+import { BookingPage } from './pages/BookingPage';
+import { StatusPage } from './pages/StatusPage';
+import { SafetyPage } from './pages/SafetyPage';
+import { PricingPage } from './pages/PricingPage';
+import { GalleryPage } from './pages/GalleryPage';
+import { FAQsPage } from './pages/FAQsPage';
+import { ContactPage } from './pages/ContactPage';
+import { AdminPage } from './pages/AdminPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+
+export default function App() {
+  const [currentRoute, setCurrentRoute] = useState<PageRoute>('home');
+  const [selectedPiercingForModal, setSelectedPiercingForModal] = useState<Piercing | null>(null);
+
+  // Booking details passed from calendar to booking form
+  const [bookingDetails, setBookingDetails] = useState<{
+    piercingId: string;
+    piercingName: string;
+    date: string;
+    time: string;
+    peopleCount: number;
+    notes?: string;
+  } | undefined>(undefined);
+
+  // Reference number for status tracking
+  const [trackedReference, setTrackedReference] = useState<string>('');
+
+  // Synchronize route with URL hash for navigation & bookmarking
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '') as PageRoute;
+      const validRoutes: PageRoute[] = [
+        'home', 'about', 'piercings', 'instructions', 'aftercare',
+        'availability', 'booking', 'status', 'safety', 'pricing',
+        'gallery', 'faqs', 'contact', 'admin', 'privacy', 'terms'
+      ];
+      if (validRoutes.includes(hash)) {
+        setCurrentRoute(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // initial check
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (route: PageRoute) => {
+    setCurrentRoute(route);
+    window.location.hash = `#/${route}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenPiercingModal = (piercing: Piercing) => {
+    setSelectedPiercingForModal(piercing);
+  };
+
+  const handleSelectAlternativePiercingInModal = (piercingId: string) => {
+    const found = PIERCINGS.find(p => p.id === piercingId);
+    if (found) {
+      setSelectedPiercingForModal(found);
+    }
+  };
+
+  const handleBookPiercingFromCardOrModal = (piercing: Piercing) => {
+    setSelectedPiercingForModal(null);
+    setBookingDetails({
+      piercingId: piercing.id,
+      piercingName: piercing.name,
+      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      time: '2:00 PM',
+      peopleCount: 1
+    });
+    navigateTo('availability');
+  };
+
+  const handleSelectSlotAndBook = (piercingId: string, date: string, time: string) => {
+    const p = PIERCINGS.find(item => item.id === piercingId);
+    setBookingDetails({
+      piercingId,
+      piercingName: p?.name || 'Selected Piercing',
+      date,
+      time,
+      peopleCount: 1
+    });
+    navigateTo('booking');
+  };
+
+  const handleProceedToBooking = (details: {
+    piercingId: string;
+    piercingName: string;
+    date: string;
+    time: string;
+    peopleCount: number;
+    notes?: string;
+  }) => {
+    setBookingDetails(details);
+    navigateTo('booking');
+  };
+
+  const handleTrackStatus = (ref?: string) => {
+    if (ref) {
+      setTrackedReference(ref);
+    }
+    navigateTo('status');
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#111111] font-sans antialiased selection:bg-[#A63D40] selection:text-white">
+      {/* Global Navigation */}
+      <Navbar
+        currentRoute={currentRoute}
+        onRouteChange={navigateTo}
+      />
+
+      {/* Main Content Router */}
+      <main className="flex-1">
+        {currentRoute === 'home' && (
+          <HomePage
+            onNavigate={navigateTo}
+            onViewPiercingDetails={handleOpenPiercingModal}
+            onBookPiercing={handleBookPiercingFromCardOrModal}
+            onSelectSlotAndBook={handleSelectSlotAndBook}
+          />
+        )}
+
+        {currentRoute === 'about' && (
+          <AboutPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'piercings' && (
+          <PiercingsPage
+            onViewDetails={handleOpenPiercingModal}
+            onBookPiercing={handleBookPiercingFromCardOrModal}
+          />
+        )}
+
+        {currentRoute === 'instructions' && (
+          <InstructionsPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'aftercare' && (
+          <AftercarePage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'availability' && (
+          <AvailabilityPage
+            initialPiercingId={bookingDetails?.piercingId}
+            onProceedToBooking={handleProceedToBooking}
+            onTrackStatus={() => navigateTo('status')}
+          />
+        )}
+
+        {currentRoute === 'booking' && (
+          <BookingPage
+            initialData={bookingDetails}
+            onBackToCalendar={() => navigateTo('availability')}
+            onViewStatus={handleTrackStatus}
+          />
+        )}
+
+        {currentRoute === 'status' && (
+          <StatusPage
+            initialReference={trackedReference}
+            onBookNew={() => navigateTo('availability')}
+          />
+        )}
+
+        {currentRoute === 'safety' && (
+          <SafetyPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'pricing' && (
+          <PricingPage
+            onSelectPiercingToBook={handleBookPiercingFromCardOrModal}
+            onViewDetails={handleOpenPiercingModal}
+          />
+        )}
+
+        {currentRoute === 'gallery' && (
+          <GalleryPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'faqs' && (
+          <FAQsPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'contact' && (
+          <ContactPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'admin' && (
+          <AdminPage />
+        )}
+
+        {currentRoute === 'privacy' && (
+          <PrivacyPage onNavigate={navigateTo} />
+        )}
+
+        {currentRoute === 'terms' && (
+          <TermsPage onNavigate={navigateTo} />
+        )}
+      </main>
+
+      {/* Piercing Details Modal */}
+      <PiercingDetailModal
+        piercing={selectedPiercingForModal}
+        onClose={() => setSelectedPiercingForModal(null)}
+        onCheckAvailability={handleBookPiercingFromCardOrModal}
+        onSelectAlternativePiercing={handleSelectAlternativePiercingInModal}
+      />
+
+      {/* Global Footer */}
+      <Footer onRouteChange={navigateTo} />
+    </div>
+  );
+}
