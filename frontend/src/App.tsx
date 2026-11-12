@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { PageRoute, Piercing } from './types';
 import { PIERCINGS } from './data/piercings';
+import { getAdminToken } from './api';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { PiercingDetailModal } from './components/PiercingDetailModal';
@@ -20,58 +21,123 @@ import { GalleryPage } from './pages/GalleryPage';
 import { FAQsPage } from './pages/FAQsPage';
 import { ContactPage } from './pages/ContactPage';
 import { AdminPage } from './pages/AdminPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
 
+function resolveRouteFromLocation(): PageRoute {
+  const hashRaw = window.location.hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  const pathRaw = window.location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  const candidate = hashRaw || pathRaw;
+
+  if (candidate === 'admin/login' || candidate === 'admin-login') {
+    return 'admin-login';
+  }
+  if (
+    candidate === 'admin/dashboard' ||
+    candidate === 'admin-dashboard' ||
+    candidate === 'admin'
+  ) {
+    return getAdminToken() ? 'admin-dashboard' : 'admin-login';
+  }
+
+  const validRoutes: PageRoute[] = [
+    'home',
+    'about',
+    'piercings',
+    'instructions',
+    'aftercare',
+    'availability',
+    'booking',
+    'status',
+    'safety',
+    'pricing',
+    'gallery',
+    'faqs',
+    'contact',
+    'privacy',
+    'terms',
+  ];
+
+  if (validRoutes.includes(candidate as PageRoute)) {
+    return candidate as PageRoute;
+  }
+
+  return 'home';
+}
+
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState<PageRoute>('home');
+  const [currentRoute, setCurrentRoute] = useState<PageRoute>(() => resolveRouteFromLocation());
   const [selectedPiercingForModal, setSelectedPiercingForModal] = useState<Piercing | null>(null);
 
   // Booking details passed from calendar to booking form
-  const [bookingDetails, setBookingDetails] = useState<{
-    piercingId: string;
-    piercingName: string;
-    date: string;
-    time: string;
-    peopleCount: number;
-    notes?: string;
-  } | undefined>(undefined);
+  const [bookingDetails, setBookingDetails] = useState<
+    | {
+        piercingId: string;
+        piercingName: string;
+        date: string;
+        time: string;
+        peopleCount: number;
+        notes?: string;
+      }
+    | undefined
+  >(undefined);
 
   // Reference number for status tracking
   const [trackedReference, setTrackedReference] = useState<string>('');
 
-  // Synchronize route with URL hash for navigation & bookmarking
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '') as PageRoute;
-      const validRoutes: PageRoute[] = [
-        'home', 'about', 'piercings', 'instructions', 'aftercare',
-        'availability', 'booking', 'status', 'safety', 'pricing',
-        'gallery', 'faqs', 'contact', 'admin', 'privacy', 'terms'
-      ];
-      if (validRoutes.includes(hash)) {
-        setCurrentRoute(hash);
+  const navigateTo = useCallback((route: PageRoute) => {
+    if (route === 'admin' || route === 'admin-dashboard') {
+      if (!getAdminToken()) {
+        setCurrentRoute('admin-login');
+        window.location.hash = '#/admin/login';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
       }
-    };
+      setCurrentRoute('admin-dashboard');
+      window.location.hash = '#/admin/dashboard';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // initial check
+    if (route === 'admin-login') {
+      setCurrentRoute('admin-login');
+      window.location.hash = '#/admin/login';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  const navigateTo = (route: PageRoute) => {
     setCurrentRoute(route);
     window.location.hash = `#/${route}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
+
+  // Synchronize route with URL hash / popstate for navigation & bookmarking
+  useEffect(() => {
+    const syncRoute = () => {
+      const resolved = resolveRouteFromLocation();
+      setCurrentRoute(resolved);
+      if (resolved === 'admin-login' && window.location.hash.includes('admin/dashboard')) {
+        window.location.hash = '#/admin/login';
+      }
+    };
+
+    window.addEventListener('hashchange', syncRoute);
+    window.addEventListener('popstate', syncRoute);
+    syncRoute();
+
+    return () => {
+      window.removeEventListener('hashchange', syncRoute);
+      window.removeEventListener('popstate', syncRoute);
+    };
+  }, []);
 
   const handleOpenPiercingModal = (piercing: Piercing) => {
     setSelectedPiercingForModal(piercing);
   };
 
   const handleSelectAlternativePiercingInModal = (piercingId: string) => {
-    const found = PIERCINGS.find(p => p.id === piercingId);
+    const found = PIERCINGS.find((p) => p.id === piercingId);
     if (found) {
       setSelectedPiercingForModal(found);
     }
@@ -84,19 +150,19 @@ export default function App() {
       piercingName: piercing.name,
       date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
       time: '2:00 PM',
-      peopleCount: 1
+      peopleCount: 1,
     });
     navigateTo('availability');
   };
 
   const handleSelectSlotAndBook = (piercingId: string, date: string, time: string) => {
-    const p = PIERCINGS.find(item => item.id === piercingId);
+    const p = PIERCINGS.find((item) => item.id === piercingId);
     setBookingDetails({
       piercingId,
       piercingName: p?.name || 'Selected Piercing',
       date,
       time,
-      peopleCount: 1
+      peopleCount: 1,
     });
     navigateTo('booking');
   };
@@ -123,10 +189,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#111111] font-sans antialiased selection:bg-[#A63D40] selection:text-white">
       {/* Global Navigation */}
-      <Navbar
-        currentRoute={currentRoute}
-        onRouteChange={navigateTo}
-      />
+      <Navbar currentRoute={currentRoute} onRouteChange={navigateTo} />
 
       {/* Main Content Router */}
       <main className="flex-1">
@@ -139,9 +202,7 @@ export default function App() {
           />
         )}
 
-        {currentRoute === 'about' && (
-          <AboutPage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'about' && <AboutPage onNavigate={navigateTo} />}
 
         {currentRoute === 'piercings' && (
           <PiercingsPage
@@ -150,13 +211,9 @@ export default function App() {
           />
         )}
 
-        {currentRoute === 'instructions' && (
-          <InstructionsPage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'instructions' && <InstructionsPage onNavigate={navigateTo} />}
 
-        {currentRoute === 'aftercare' && (
-          <AftercarePage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'aftercare' && <AftercarePage onNavigate={navigateTo} />}
 
         {currentRoute === 'availability' && (
           <AvailabilityPage
@@ -181,9 +238,7 @@ export default function App() {
           />
         )}
 
-        {currentRoute === 'safety' && (
-          <SafetyPage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'safety' && <SafetyPage onNavigate={navigateTo} />}
 
         {currentRoute === 'pricing' && (
           <PricingPage
@@ -192,29 +247,26 @@ export default function App() {
           />
         )}
 
-        {currentRoute === 'gallery' && (
-          <GalleryPage onNavigate={navigateTo} />
+        {currentRoute === 'gallery' && <GalleryPage onNavigate={navigateTo} />}
+
+        {currentRoute === 'faqs' && <FAQsPage onNavigate={navigateTo} />}
+
+        {currentRoute === 'contact' && <ContactPage onNavigate={navigateTo} />}
+
+        {currentRoute === 'admin-login' && (
+          <AdminLoginPage
+            onLoginSuccess={() => navigateTo('admin-dashboard')}
+            onNavigate={navigateTo}
+          />
         )}
 
-        {currentRoute === 'faqs' && (
-          <FAQsPage onNavigate={navigateTo} />
+        {(currentRoute === 'admin-dashboard' || currentRoute === 'admin') && (
+          <AdminPage onRequireLogin={() => navigateTo('admin-login')} />
         )}
 
-        {currentRoute === 'contact' && (
-          <ContactPage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'privacy' && <PrivacyPage onNavigate={navigateTo} />}
 
-        {currentRoute === 'admin' && (
-          <AdminPage />
-        )}
-
-        {currentRoute === 'privacy' && (
-          <PrivacyPage onNavigate={navigateTo} />
-        )}
-
-        {currentRoute === 'terms' && (
-          <TermsPage onNavigate={navigateTo} />
-        )}
+        {currentRoute === 'terms' && <TermsPage onNavigate={navigateTo} />}
       </main>
 
       {/* Piercing Details Modal */}

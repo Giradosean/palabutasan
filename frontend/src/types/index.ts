@@ -79,5 +79,7 @@ export type PageRoute =
   | 'faqs'
   | 'contact'
   | 'admin'
+  | 'admin-login'
+  | 'admin-dashboard'
   | 'privacy'
   | 'terms';

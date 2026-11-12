@@ -158,8 +158,8 @@ export const Footer: React.FC<FooterProps> = ({ onRouteChange }) => {
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNav('admin')} className="text-neutral-400 hover:text-white transition-colors">
-                  Studio Admin Portal
+                <button onClick={() => handleNav('admin-dashboard')} className="text-neutral-400 hover:text-white transition-colors">
+                  Studio Portal
                 </button>
               </li>
             </ul>
@@ -199,7 +199,7 @@ export const Footer: React.FC<FooterProps> = ({ onRouteChange }) => {
           <div>
             © 2026 Palabutasan. All rights reserved.
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6">
             <button onClick={() => handleNav('privacy')} className="hover:text-white transition-colors">
               Privacy Policy
             </button>
@@ -208,6 +208,9 @@ export const Footer: React.FC<FooterProps> = ({ onRouteChange }) => {
             </button>
             <button onClick={() => handleNav('contact')} className="hover:text-white transition-colors">
               Contact Studio
+            </button>
+            <button onClick={() => handleNav('admin-dashboard')} className="text-neutral-500 hover:text-neutral-300 transition-colors">
+              Studio Portal
             </button>
           </div>
         </div>

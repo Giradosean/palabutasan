@@ -1,3 +1,4 @@
+from datetime import datetime, time, timedelta
 from rest_framework import serializers
 from .models import PiercingService, TimeSlot, Appointment, FAQ, ContactMessage
 
@@ -20,6 +21,7 @@ class PiercingServiceSerializer(serializers.ModelSerializer):
 
 class TimeSlotSerializer(serializers.ModelSerializer):
     time = serializers.SerializerMethodField()
+    end_time = serializers.TimeField(required=False)
 
     class Meta:
         model = TimeSlot
@@ -37,6 +39,14 @@ class TimeSlotSerializer(serializers.ModelSerializer):
             return obj.start_time.strftime('%I:%M %p').lstrip('0')
         except Exception:
             return str(obj.start_time)
+
+    def validate(self, attrs):
+        start_time = attrs.get('start_time') or (self.instance.start_time if self.instance else None)
+        end_time = attrs.get('end_time') or (self.instance.end_time if self.instance else None)
+        if start_time and not end_time:
+            dt = datetime.combine(datetime.today(), start_time) + timedelta(minutes=30)
+            attrs['end_time'] = dt.time()
+        return attrs
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
@@ -97,4 +107,3 @@ class ContactMessageSerializer(serializers.ModelSerializer):
         model = ContactMessage
         fields = ['id', 'sender_name', 'email', 'message', 'created_at']
         read_only_fields = ['created_at']
-
