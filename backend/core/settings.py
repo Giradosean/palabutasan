@@ -31,9 +31,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-ay(e%87+um7g98t&*j@1s6&d2i
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't', 'yes')
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()
-]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -59,10 +57,10 @@ REST_FRAMEWORK = {
 }
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -70,12 +68,17 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173,http://127.0.0.1:5173')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://palabutasan.vercel.app,http://localhost:5173,http://127.0.0.1:5173')
 CORS_ALLOWED_ORIGINS = list({
     url.strip().rstrip('/')
-    for url in (FRONTEND_URL + ',http://localhost:5173,http://127.0.0.1:5173').split(',')
-    if url.strip()
+    for url in (FRONTEND_URL + ',https://palabutasan.vercel.app,http://localhost:5173,http://127.0.0.1:5173').split(',')
+    if url.strip() and url.strip().startswith('http')
 })
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = [
+    'https://palabutasan.vercel.app',
+    'https://palabutasan.onrender.com',
+]
 
 ROOT_URLCONF = 'core.urls'
 
